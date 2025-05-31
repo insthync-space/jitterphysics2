@@ -68,6 +68,18 @@ public static class MathHelper
 
     */
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int SignBit(float value)
+    {
+        return 1 | (BitConverter.SingleToInt32Bits(value) >> 31);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int SignBit(double value)
+    {
+        return 1 | (int)(BitConverter.DoubleToInt64Bits(value) >> 63);
+    }
+
     /// <summary>
     /// Calculates the rotation quaternion corresponding to the given (constant) angular
     /// velocity vector and time step.
@@ -75,8 +87,9 @@ public static class MathHelper
     public static JQuaternion RotationQuaternion(in JVector omega, Real dt)
     {
         Real angle = omega.Length();
+        Real theta = angle * dt;
 
-        if (angle < (Real)0.001)
+        if (theta < (Real)1e-3)
         {
             Real dt3 = dt * dt * dt;
             Real angle2 = angle * angle;
@@ -84,10 +97,11 @@ public static class MathHelper
             Real scale = (Real)0.5 * dt - ((Real)1.0 / (Real)48.0) * dt3 * angle2;
             JVector.Multiply(omega, scale, out var axis);
 
-            Real theta = angle * dt;
             Real cos = (Real)1.0 - ((Real)1.0/(Real)8.0) * theta * theta;
 
-            return new JQuaternion(axis.X, axis.Y, axis.Z, cos);
+            JQuaternion res = new JQuaternion(axis.X, axis.Y, axis.Z, cos);
+            Debug.Assert(MathHelper.IsZero(res.Length() - 1, (Real)1e-2));
+            return res;
         }
         else
         {
@@ -97,7 +111,9 @@ public static class MathHelper
             Real scale = sinD / angle;
             JVector.Multiply(omega, scale, out var axis);
 
-            return new JQuaternion(axis.X, axis.Y, axis.Z, cosD);
+            JQuaternion res = new JQuaternion(axis.X, axis.Y, axis.Z, cosD);
+            Debug.Assert(MathHelper.IsZero(res.Length() - 1, (Real)1e-2));
+            return res;
         }
     }
 
@@ -126,6 +142,14 @@ public static class MathHelper
         Real z = MathR.Abs(vector.Z);
 
         return MathR.Max(x, MathR.Max(y, z)) < epsilon;
+    }
+
+    /// <summary>
+    /// Checks if a value is close to zero.
+    /// </summary>
+    public static bool IsZero(Real value, Real epsilon = (Real)1e-6)
+    {
+        return MathR.Abs(value) < epsilon;
     }
 
     /// <summary>

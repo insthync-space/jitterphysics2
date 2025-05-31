@@ -34,24 +34,43 @@ using Jitter2.Unmanaged;
 
 namespace Jitter2.Dynamics;
 
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Explicit, Size = Precision.RigidBodyDataSize)]
 public struct RigidBodyData
 {
+    [FieldOffset(0)]
     public int _index;
+
+    [FieldOffset(4)]
     public int _lockFlag;
 
+    [FieldOffset(8 + 0*sizeof(Real))]
     public JVector Position;
+
+    [FieldOffset(8 + 3*sizeof(Real))]
     public JVector Velocity;
+
+    [FieldOffset(8 + 6*sizeof(Real))]
     public JVector AngularVelocity;
 
+    [FieldOffset(8 + 9*sizeof(Real))]
     public JVector DeltaVelocity;
+
+    [FieldOffset(8 + 12*sizeof(Real))]
     public JVector DeltaAngularVelocity;
 
+    [FieldOffset(8 + 15*sizeof(Real))]
     public JQuaternion Orientation;
+
+    [FieldOffset(8 + 19*sizeof(Real))]
     public JMatrix InverseInertiaWorld;
 
+    [FieldOffset(8 + 28*sizeof(Real))]
     public Real InverseMass;
+
+    [FieldOffset(8 + 29*sizeof(Real) + 0)]
     public bool IsActive;
+
+    [FieldOffset(8 + 29*sizeof(Real) + 1)]
     public bool IsStatic;
 
     public readonly bool IsStaticOrInactive => !IsActive || IsStatic;
@@ -350,13 +369,29 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     public JVector Velocity
     {
         get => handle.Data.Velocity;
-        set => handle.Data.Velocity = value;
+        set
+        {
+            if (!MathHelper.CloseToZero(value))
+            {
+                World.ActivateBodyNextStep(this);
+            }
+
+            handle.Data.Velocity = value;
+        }
     }
 
     public JVector AngularVelocity
     {
         get => handle.Data.AngularVelocity;
-        set => handle.Data.AngularVelocity = value;
+        set
+        {
+            if (!MathHelper.CloseToZero(value))
+            {
+                World.ActivateBodyNextStep(this);
+            }
+
+            handle.Data.AngularVelocity = value;
+        }
     }
 
     public bool AffectedByGravity { get; set; } = true;
@@ -485,6 +520,8 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// <param name="force">The force to be applied.</param>
     public void AddForce(in JVector force)
     {
+        if (IsStatic || MathHelper.CloseToZero(force)) return;
+        SetActivationState(true);
         Force += force;
     }
 
@@ -497,10 +534,11 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     [ReferenceFrame(ReferenceFrame.World)]
     public void AddForce(in JVector force, in JVector position)
     {
+        if (IsStatic || MathHelper.CloseToZero(force)) return;
+
+        SetActivationState(true);
+
         ref RigidBodyData data = ref Data;
-
-        if (data.IsStatic) return;
-
         JVector.Subtract(position, data.Position, out JVector torque);
         JVector.Cross(torque, force, out torque);
 

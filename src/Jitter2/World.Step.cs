@@ -46,14 +46,16 @@ public sealed partial class World
 
     public enum Timings
     {
-        UpdateBodies,
+        PreStep,
         NarrowPhase,
-        BroadPhase,
         AddArbiter,
-        RemoveArbiter,
-        Solve,
-        UpdateContacts,
         CheckDeactivation,
+        Solve,
+        RemoveArbiter,
+        UpdateContacts,
+        UpdateBodies,
+        BroadPhase,
+        PostStep,
         Last
     }
 
@@ -131,10 +133,11 @@ public sealed partial class World
             ThreadPool.Instance.SignalWait();
         }
 
-        PreStep?.Invoke(dt);
-
         // Start timer
         time = Stopwatch.GetTimestamp();
+
+        PreStep?.Invoke(dt);
+        SetTime(Timings.PreStep);
 
         // Perform narrow phase detection.
         DynamicTree.EnumerateOverlaps(detect, multiThread);
@@ -177,6 +180,7 @@ public sealed partial class World
         SetTime(Timings.BroadPhase);
 
         PostStep?.Invoke(dt);
+        SetTime(Timings.PostStep);
 
         if ((ThreadModel == ThreadModelType.Regular || !multiThread)
             && ThreadPool.InstanceInitialized)
