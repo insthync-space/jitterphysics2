@@ -82,13 +82,16 @@ public static class NarrowPhase
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public bool SolveMpr<TA,TB>(in TA supportA, in TB supportB, in JQuaternion orientationB,
             in JVector positionB, Real epaThreshold,
             out JVector pointA, out JVector pointB, out JVector normal, out Real penetration)
             where TA : ISupportMappable where TB : ISupportMappable
         {
             /*
+            This method is adapted from XenoCollide.
+            Modified from the original version.
+
             XenoCollide is available under the zlib license:
 
             XenoCollide Collision Detection and Physics Library

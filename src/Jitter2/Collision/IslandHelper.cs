@@ -21,7 +21,15 @@ internal static class IslandHelper
 
     private static Island GetFromPool()
     {
-        return pool.Count > 0 ? pool.Pop() : new Island();
+        if (!pool.TryPop(out var island))
+        {
+            island = new Island();
+        }
+
+        island.MarkedAsActive = true;
+        island.NeedsUpdate = false;
+
+        return island;
     }
 
     private static void ReturnToPool(Island island)
@@ -36,8 +44,6 @@ internal static class IslandHelper
 
         b1.InternalContacts.Add(arbiter);
         b2.InternalContacts.Add(arbiter);
-
-        if (b1.Data.IsStatic || b2.Data.IsStatic) return;
 
         AddConnection(islands, b1, b2);
     }
@@ -54,8 +60,6 @@ internal static class IslandHelper
     {
         constraint.Body1.InternalConstraints.Add(constraint);
         constraint.Body2.InternalConstraints.Add(constraint);
-
-        if (constraint.Body1.Data.IsStatic || constraint.Body2.Data.IsStatic) return;
 
         AddConnection(islands, constraint.Body1, constraint.Body2);
     }
@@ -84,19 +88,42 @@ internal static class IslandHelper
 
     public static void AddConnection(IslandSet islands, RigidBody body1, RigidBody body2)
     {
-        MergeIslands(islands, body1, body2);
+        bool needsUpdate = (!islands.IsActive(body1.Island) || !islands.IsActive(body2.Island));
+        bool bothNotStatic = body1.Data.MotionType != MotionType.Static && body2.Data.MotionType != MotionType.Static;
 
-        body1.InternalConnections.Add(body2);
-        body2.InternalConnections.Add(body1);
+        if (bothNotStatic)
+        {
+            MergeIslands(islands, body1, body2);
+            body1.InternalConnections.Add(body2);
+            body2.InternalConnections.Add(body1);
+        }
+
+        if (needsUpdate)
+        {
+            if(body1.Data.MotionType != MotionType.Static) body1.Island.NeedsUpdate = true;
+            if(body2.Data.MotionType != MotionType.Static) body2.Island.NeedsUpdate = true;
+        }
     }
 
     public static void RemoveConnection(IslandSet islands, RigidBody body1, RigidBody body2)
     {
-        body1.InternalConnections.Remove(body2);
-        body2.InternalConnections.Remove(body1);
+        static void RemoveRef(List<RigidBody> list, RigidBody body)
+        {
+            int index = list.IndexOf(body);
+            if (index < 0) return;
+
+            int last = list.Count - 1;
+            list[index] = list[last];
+            list.RemoveAt(last);
+        }
+
+        RemoveRef(body1.InternalConnections, body2);
+        RemoveRef(body2.InternalConnections, body1);
 
         if (body1.InternalIsland == body2.InternalIsland)
+        {
             SplitIslands(islands, body1, body2);
+        }
     }
 
     private static readonly Queue<RigidBody> leftSearchQueue = [];
@@ -121,7 +148,7 @@ internal static class IslandHelper
         while (leftSearchQueue.Count > 0 && rightSearchQueue.Count > 0)
         {
             RigidBody currentNode = leftSearchQueue.Dequeue();
-            if (!currentNode.Data.IsStatic)
+            if (currentNode.Data.MotionType != MotionType.Static)
             {
                 for (int i = 0; i < currentNode.InternalConnections.Count; i++)
                 {
@@ -143,7 +170,7 @@ internal static class IslandHelper
             }
 
             currentNode = rightSearchQueue.Dequeue();
-            if (!currentNode.Data.IsStatic)
+            if (currentNode.Data.MotionType != MotionType.Static)
             {
                 for (int i = 0; i < currentNode.InternalConnections.Count; i++)
                 {
@@ -170,6 +197,8 @@ internal static class IslandHelper
 
         if (leftSearchQueue.Count == 0)
         {
+            island.NeedsUpdate = body2.InternalIsland.NeedsUpdate;
+
             for (int i = 0; i < visitedBodiesLeft.Count; i++)
             {
                 RigidBody body = visitedBodiesLeft[i];
@@ -182,6 +211,8 @@ internal static class IslandHelper
         }
         else if (rightSearchQueue.Count == 0)
         {
+            island.NeedsUpdate = body1.InternalIsland.NeedsUpdate;
+
             for (int i = 0; i < visitedBodiesRight.Count; i++)
             {
                 RigidBody body = visitedBodiesRight[i];
