@@ -294,6 +294,23 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     public ReadOnlyHashSet<Arbiter> Contacts => new(InternalContacts);
 
     /// <summary>
+    /// Clears the cached contact manifold state for all current contacts of this body.
+    /// </summary>
+    /// <remarks>
+    /// This discards cached contact points and accumulated impulses, forcing contact
+    /// manifolds to be rebuilt on the next simulation step. This is useful after
+    /// discontinuous user-driven transform changes such as teleports.
+    /// Do not call this concurrently with <see cref="World.Step(Real, bool)"/>.
+    /// </remarks>
+    public void ClearContactCache()
+    {
+        foreach (var arbiter in InternalContacts)
+        {
+            arbiter.Handle.Data.UsageMask = 0;
+        }
+    }
+
+    /// <summary>
     /// Contains all constraints connected to this body.
     /// </summary>
     public ReadOnlyHashSet<Constraint> Constraints => new(InternalConstraints);
@@ -457,7 +474,8 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// </summary>
     /// <remarks>
     /// Setting this property updates the broadphase proxies for all attached shapes
-    /// and schedules the body for activation on the next step.
+    /// and schedules the body for activation on the next step. Any currently active
+    /// cached contacts involving this body are invalidated.
     /// </remarks>
     public JVector Position
     {
@@ -474,7 +492,8 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// </summary>
     /// <remarks>
     /// Setting this property updates the broadphase proxies for all attached shapes
-    /// and schedules the body for activation on the next step.
+    /// and schedules the body for activation on the next step. Any currently active
+    /// cached contacts involving this body are invalidated.
     /// </remarks>
     public JQuaternion Orientation
     {
@@ -489,6 +508,7 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     private void Move()
     {
         UpdateWorldInertia();
+        ClearContactCache();
 
         foreach (var shape in InternalShapes)
         {
@@ -1014,7 +1034,6 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// <summary>
     /// Removes a specified shape from the rigid body.
     /// </summary>
-    /// <remarks>This operation has a time complexity of O(n), where n is the number of shapes attached to the body.</remarks>
     /// <param name="shape">The shape to remove from the rigid body.</param>
     /// <exception cref="ArgumentException">
     /// Thrown if the specified shape is not part of this rigid body.
@@ -1025,7 +1044,6 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// <summary>
     /// Removes a specified shape from the rigid body.
     /// </summary>
-    /// <remarks>This operation has a time complexity of O(n), where n is the number of shapes attached to the body.</remarks>
     /// <param name="shape">The shape to remove from the rigid body.</param>
     /// <param name="massInertiaMode">
     /// Controls whether the body's mass and inertia are recomputed after the shape is removed.
@@ -1061,7 +1079,6 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// <summary>
     /// Removes several shapes from the body.
     /// </summary>
-    /// <remarks>This operation has a time complexity of O(n), where n is the number of shapes attached to the body.</remarks>
     /// <param name="shapes">The shapes to remove from the rigid body.</param>
     /// <exception cref="ArgumentException">Thrown if at least one shape is not part of this rigid body.</exception>
     public void RemoveShapes(IEnumerable<RigidBodyShape> shapes)
@@ -1070,7 +1087,6 @@ public sealed class RigidBody : IPartitionedSetIndex, IDebugDrawable
     /// <summary>
     /// Removes several shapes from the body.
     /// </summary>
-    /// <remarks>This operation has a time complexity of O(n), where n is the number of shapes attached to the body.</remarks>
     /// <param name="shapes">The shapes to remove from the rigid body.</param>
     /// <param name="massInertiaMode">
     /// Controls whether the body's mass and inertia are recomputed after the shapes are removed.

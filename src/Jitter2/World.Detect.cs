@@ -59,6 +59,16 @@ public sealed partial class World
     public bool EnableAuxiliaryContactPoints { set; get; } = true;
 
     /// <summary>
+    /// When enabled (the default), contact points and their accumulated impulses are cached between
+    /// frames. This allows the solver to warm-start from the previous solution and enables the
+    /// manifold to grow over several steps, which improves stability for resting contacts.
+    /// When disabled, all contact data is discarded at the end of each frame and every contact is
+    /// treated as brand-new. Disabling this removes all frame-to-frame contact memory at the cost
+    /// of solver convergence speed.
+    /// </summary>
+    public bool PersistentContactManifold { get; set; } = true;
+
+    /// <summary>
     /// A speculative contact slows a body down such that it does not penetrate or tunnel through
     /// an obstacle within one frame. The <see cref="SpeculativeRelaxationFactor"/> scales the
     /// slowdown, ranging from 0 (where the body stops immediately during this frame) to 1 (where the body and the
@@ -191,6 +201,7 @@ public sealed partial class World
         lock (arbiter)
         {
             memContacts.ResizeLock.EnterReadLock();
+            if (!PersistentContactManifold) arbiter.Handle.Data.UsageMask = 0;
             arbiter.Handle.Data.AddContact(point1, point2, normal);
             arbiter.Handle.Data.ResetMode(removeFlags);
             memContacts.ResizeLock.ExitReadLock();
@@ -230,16 +241,19 @@ public sealed partial class World
             // Do not add contacts while contacts might be resized
             memContacts.ResizeLock.EnterReadLock();
 
+            if (!PersistentContactManifold) arbiter.Handle.Data.UsageMask = 0;
             arbiter.Handle.Data.ResetMode(removeFlags);
+
+            // Cull invalid candidates before reducing to the 4 solver contacts.
+            manifold.ReduceToSolverContacts(normal);
+
+            ReadOnlySpan<JVector> manifoldA = manifold.ManifoldA;
+            ReadOnlySpan<JVector> manifoldB = manifold.ManifoldB;
 
             for (int e = 0; e < manifold.Count; e++)
             {
-                JVector mfA = manifold.ManifoldA[e];
-                JVector mfB = manifold.ManifoldB[e];
-
-                Real nd = JVector.Dot(mfA - mfB, normal);
-                if (nd < (Real)0.0) continue;
-
+                JVector mfA = manifoldA[e];
+                JVector mfB = manifoldB[e];
                 arbiter.Handle.Data.AddContact(mfA, mfB, normal);
             }
 
@@ -280,11 +294,11 @@ public sealed partial class World
     }
 
     /// <summary>
-    /// Retrieves an existing <see cref="Arbiter"/> instance for the given pair of IDs.
+    /// Gets an existing <see cref="Arbiter"/> instance for the given pair of IDs.
     /// </summary>
     /// <param name="id0">The first identifier (e.g., shape ID).</param>
     /// <param name="id1">The second identifier.</param>
-    /// <param name="arbiter">When this method returns true, contains the arbiter; otherwise, null.</param>
+    /// <param name="arbiter">The arbiter for the ordered ID pair, or <see langword="null"/> if none exists.</param>
     /// <returns><see langword="true"/> if an arbiter exists for the ordered ID pair; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
     /// The order of <paramref name="id0"/> and <paramref name="id1"/> matters.
@@ -302,7 +316,7 @@ public sealed partial class World
     }
 
     /// <summary>
-    /// Retrieves an existing <see cref="Arbiter"/> instance for the given pair of IDs,
+    /// Gets an existing <see cref="Arbiter"/> instance for the given pair of IDs,
     /// or creates a new one if none exists.
     /// </summary>
     /// <remarks>
