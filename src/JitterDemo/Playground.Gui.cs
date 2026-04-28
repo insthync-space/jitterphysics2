@@ -211,12 +211,12 @@ public partial class Playground : RenderWindow
                 content.Vertical(labels =>
                 {
                     labels.ItemSpacing(1f);
-                    TableRow(labels, "Islands", $"{World.Islands.Count} / {World.Islands.ActiveCount}", 82f);
-                    TableRow(labels, "Bodies", $"{data.RigidBodies.Length} / {data.ActiveRigidBodies.Length}", 82f);
-                    TableRow(labels, "Arbiter", $"{data.Contacts.Length} / {data.ActiveContacts.Length}", 82f);
-                    TableRow(labels, "Constraints", $"{data.Constraints.Length} / {data.ActiveConstraints.Length}", 82f);
-                    TableRow(labels, "SmallConstraints", $"{data.SmallConstraints.Length} / {data.ActiveSmallConstraints.Length}", 82f);
-                    TableRow(labels, "Proxies", $"{World.DynamicTree.Proxies.Count} / {World.DynamicTree.Proxies.ActiveCount}", 82f);
+                    TableRow(labels, "Islands", $"{World.Islands.Count}/{World.Islands.ActiveCount}", 82f);
+                    TableRow(labels, "Bodies", $"{data.RigidBodies.Length}/{data.ActiveRigidBodies.Length}", 82f);
+                    TableRow(labels, "Arbiter", $"{data.Contacts.Length}/{data.ActiveContacts.Length}", 82f);
+                    TableRow(labels, "Constraints", $"{data.Constraints.Length}/{data.ActiveConstraints.Length}", 82f);
+                    TableRow(labels, "SmallConstraints", $"{data.SmallConstraints.Length}/{data.ActiveSmallConstraints.Length}", 82f);
+                    TableRow(labels, "Proxies", $"{World.DynamicTree.Proxies.Count}/{World.DynamicTree.Proxies.ActiveCount}", 82f);
                 });
             }
 
