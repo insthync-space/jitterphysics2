@@ -37,18 +37,6 @@ public static class ImportResolver
         {
             switch (libraryName)
             {
-                case DearImGui.ImGuiNative.LIBCIMGUI:
-                    return archStr switch
-                    {
-                        "_wa" => NativeLibrary.Load("runtimes/win-arm64/native/cimgui.dll"),
-                        "_wx" => NativeLibrary.Load("runtimes/win-x64/native/cimgui.dll"),
-                        "_wi" => NativeLibrary.Load("runtimes/win-x86/native/cimgui.dll"),
-                        "_la" => NativeLibrary.Load("runtimes/linux-arm64/native/cimgui.so"),
-                        "_lx" => NativeLibrary.Load("runtimes/linux-x64/native/cimgui.so"),
-                        "_oa" => NativeLibrary.Load("runtimes/osx-arm64/native/cimgui.dylib"),
-                        "_ox" => NativeLibrary.Load("runtimes/osx-x64/native/cimgui.dylib"),
-                        _ => throw new NotSupportedException("Operating system/architecture not supported.")
-                    };
                 case OpenGL.Native.GLFW.LIBGLFW:
                     return archStr switch
                     {

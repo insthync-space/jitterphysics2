@@ -12,6 +12,12 @@ public enum TextureFormat : uint
     RGBA = GLC.RGBA
 }
 
+public enum TextureDataFormat : uint
+{
+    RGBA = GLC.RGBA,
+    BGRA = GLC.BGRA
+}
+
 public enum TexelType : uint
 {
     UnsignedByte = GLC.UNSIGNED_BYTE,
@@ -82,10 +88,11 @@ public sealed class Texture2D : Texture
         return t;
     }
 
-    public void LoadImage(IntPtr data, int width, int height, bool generateMipmap = true)
+    public void LoadImage(IntPtr data, int width, int height, bool generateMipmap = true,
+        TextureDataFormat dataFormat = TextureDataFormat.BGRA)
     {
         Bind();
-        GL.TexImage2D(GLC.TEXTURE_2D, 0, (int)GLC.RGBA, width, height, 0, GLC.BGRA, GLC.UNSIGNED_BYTE, data);
+        GL.TexImage2D(GLC.TEXTURE_2D, 0, (int)GLC.RGBA, width, height, 0, (uint)dataFormat, GLC.UNSIGNED_BYTE, data);
 
         if (generateMipmap)
         {

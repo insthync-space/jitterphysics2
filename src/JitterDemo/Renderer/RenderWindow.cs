@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Vellum;
+using Vellum.Rendering;
 using JitterDemo.Renderer.OpenGL;
 
 namespace JitterDemo.Renderer;
 
 /// Scene-level host for the engine. Owns the shadow caster, lit shader, debug
-/// renderer, ImGui backend, skybox, camera, and the registry of instanced drawables.
+/// renderer, GUI backend, skybox, camera, and the registry of instanced drawables.
 public class RenderWindow : GLFWWindow
 {
     public static RenderWindow Instance { get; private set; } = null!;
@@ -13,7 +15,7 @@ public class RenderWindow : GLFWWindow
     public Camera Camera { get; set; }
     public ShadowCaster Shadow { get; private set; } = null!;
     public DebugRenderer DebugRenderer { get; private set; } = null!;
-    public ImGuiRenderer GuiRenderer { get; private set; } = null!;
+    public GuiRenderer GuiRenderer { get; private set; } = null!;
 
     public bool ShowShadowDebug { get; set; }
 
@@ -51,11 +53,18 @@ public class RenderWindow : GLFWWindow
 
     public IReadOnlyCollection<InstancedDrawable> Drawables => drawables.Values;
 
+    public Ui Gui { get; private set; } = null!;
+    public bool WantsCaptureMouse { get; protected set; }
+    public bool WantsCaptureKeyboard { get; protected set; }
+
     public override void Load()
     {
+        GuiRenderer = new GuiRenderer();
+        Gui = new Ui(GuiRenderer) { DefaultFontSize = 18f, Lcd = true, Platform = new UiPlatform(this) };
+        Gui.Theme.SurfaceBg = Color.Transparent;
+        
         Shadow = new ShadowCaster();
         DebugRenderer = new DebugRenderer();
-        GuiRenderer = new ImGuiRenderer();
 
         skybox = new Skybox();
         skybox.Load();
@@ -63,7 +72,6 @@ public class RenderWindow : GLFWWindow
         litShader = LitShader.Create();
 
         var fb = FramebufferSize;
-        GuiRenderer.Load(fb.Width, fb.Height);
         DebugRenderer.Load();
 
         VerticalSync = true;
@@ -72,6 +80,11 @@ public class RenderWindow : GLFWWindow
         Camera.Update(Keyboard, Mouse, Width > 0 ? (float)Width / Math.Max(1, Height) : 1f);
 
         lastTime = Time;
+    }
+
+    protected virtual void DrawCustomOverlay(int logicalWidth, int logicalHeight,
+        int framebufferWidth, int framebufferHeight, float contentScaleX, float contentScaleY)
+    {
     }
 
     public override void Draw()
@@ -122,15 +135,19 @@ public class RenderWindow : GLFWWindow
 
         if (Keyboard.IsKeyDown(Keyboard.Key.Escape)) Close();
 
-        // --- ImGui overlay ------------------------------------------------
-        GuiRenderer.Draw(dt, Width, Math.Max(1, Height), fbw, fbh, Keyboard, Mouse);
+        GuiRenderer.SetFramebufferSize(fbw, fbh);
+        (float contentScaleX, float contentScaleY) = WindowContentScale;
+        DrawCustomOverlay(Width, Math.Max(1, Height), fbw, fbh, contentScaleX, contentScaleY);
+
+        WantsCaptureKeyboard = Gui.WantsCaptureKeyboard;
+        WantsCaptureMouse = Gui.WantsCaptureMouse;
 
         // --- Clear per-frame instance data after we've used it ------------
         foreach (var d in drawables.Values) d.Clear();
 
         // --- Camera update ------------------------------------------------
-        Camera.IgnoreKeyboardInput = GuiRenderer.WantsCaptureKeyboard;
-        Camera.IgnoreMouseInput = GuiRenderer.WantsCaptureMouse;
+        Camera.IgnoreKeyboardInput = WantsCaptureKeyboard;
+        Camera.IgnoreMouseInput = WantsCaptureMouse;
         float aspect = Width > 0 ? (float)Width / Math.Max(1, Height) : 1f;
         Camera.Update(Keyboard, Mouse, aspect);
     }

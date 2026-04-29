@@ -129,6 +129,9 @@ public static class GLFW
     [DllImport(LIBGLFW, EntryPoint = "glfwGetFramebufferSize", ExactSpelling = true)]
     public static extern void GetFramebufferSize(IntPtr window, ref int width, ref int height);
 
+    [DllImport(LIBGLFW, EntryPoint = "glfwGetWindowContentScale", ExactSpelling = true)]
+    public static extern void GetWindowContentScale(IntPtr window, out float xscale, out float yscale);
+
     [DllImport(LIBGLFW, EntryPoint = "glfwGetWindowFrameSize", ExactSpelling = true)]
     public static extern void GetWindowFrameSize(IntPtr window, ref int left, ref int top, ref int right,
         ref int bottom);
@@ -158,10 +161,10 @@ public static class GLFW
     public static extern void SetCursorPos(IntPtr window, double xpos, double ypos);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwSetCursor", ExactSpelling = true)]
-    public static extern void SetCursor(IntPtr window, long cursor);
+    public static extern void SetCursor(IntPtr window, IntPtr cursor);
 
-    [DllImport(LIBGLFW, EntryPoint = "glfwSetClipboardString", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    public static extern void SetClipboardString(IntPtr window, string @string);
+    [DllImport(LIBGLFW, EntryPoint = "glfwSetClipboardString", ExactSpelling = true)]
+    public static extern void SetClipboardString(IntPtr window, [MarshalAs(UnmanagedType.LPUTF8Str)] string @string);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwSetTime", ExactSpelling = true)]
     public static extern void SetTime(double time);
@@ -203,7 +206,7 @@ public static class GLFW
     public static extern void PostEmptyEvent();
 
     [DllImport(LIBGLFW, EntryPoint = "glfwDestroyCursor", ExactSpelling = true)]
-    public static extern void DestroyCursor(long cursor);
+    public static extern void DestroyCursor(IntPtr cursor);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwMakeContextCurrent", ExactSpelling = true)]
     public static extern void MakeContextCurrent(IntPtr window);
@@ -266,10 +269,10 @@ public static class GLFW
     public static extern IntPtr GetWindowMonitor(IntPtr window);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwCreateCursor", ExactSpelling = true)]
-    public static extern long CreateCursor(long image, int xhot, int yhot);
+    public static extern IntPtr CreateCursor(IntPtr image, int xhot, int yhot);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwCreateStandardCursor", ExactSpelling = true)]
-    public static extern long CreateStandardCursor(int shape);
+    public static extern IntPtr CreateStandardCursor(int shape);
 
     [DllImport(LIBGLFW, EntryPoint = "glfwGetCurrentContext", ExactSpelling = true)]
     public static extern long GetCurrentContext();

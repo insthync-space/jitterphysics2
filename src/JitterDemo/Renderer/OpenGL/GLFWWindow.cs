@@ -79,6 +79,17 @@ public class GLFWWindow
         }
     }
 
+    public (float X, float Y) WindowContentScale
+    {
+        get
+        {
+            if (Handle == IntPtr.Zero) return (1f, 1f);
+
+            GLFW.GetWindowContentScale(Handle, out float x, out float y);
+            return (x > 0f ? x : 1f, y > 0f ? y : 1f);
+        }
+    }
+
     public bool VerticalSync
     {
         set
@@ -103,6 +114,12 @@ public class GLFWWindow
 
     public virtual void Load() { }
     public virtual void Draw() { }
+
+    public string GetClipboardString()
+    {
+        var ptr = GLFW.GetClipboardString(Handle);
+        return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
+    }
 
     public void Open(CreationSettings settings)
     {
